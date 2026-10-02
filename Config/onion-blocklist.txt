@@ -1,0 +1,3 @@
+# Une entrée par ligne : adresse .onion (ex. xxxxx.onion) ou son empreinte MD5 en hexadécimal.
+# Compatible avec la liste noire publiée par Ahmia (https://ahmia.fi/blacklist/).
+# Les services listés ici ne sont jamais contactés ni indexés.

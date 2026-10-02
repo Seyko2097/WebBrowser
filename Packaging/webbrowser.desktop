@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=WebBrowser
+GenericName=Moteur de recherche et navigateur texte
+Comment=Rechercher, explorer et naviguer sur le web et les services onion depuis le terminal
+Exec=webbrowser
+Icon=webbrowser
+Terminal=true
+Categories=Network;WebBrowser;ConsoleOnly;
+Keywords=search;crawler;tor;onion;browser;recherche;navigateur;

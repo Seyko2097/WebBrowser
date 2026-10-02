@@ -1,0 +1,103 @@
+.TH WEBBROWSER 1 "2026" "WebBrowser @VERSION@" "Commandes utilisateur"
+.SH NOM
+webbrowser \- moteur de recherche, crawler (web et onion) et navigateur pour le terminal
+.SH SYNOPSIS
+.B webbrowser
+[\fIrecherche\fR | \fIurl\fR]
+.br
+.B webbrowser crawl
+[\fIoptions\fR] \fIurl\fR...
+.br
+.B webbrowser search
+[\fB\-n\fR \fIN\fR] [\fB\-\-network\fR web|onion] [\fB\-\-json\fR] \fIrecherche\fR...
+.br
+.B webbrowser open
+\fIurl\fR
+.br
+.B webbrowser serve
+[\fB\-\-host\fR \fIhôte\fR] [\fB\-\-port\fR \fIport\fR]
+.br
+.B webbrowser stats | tor | paths
+.SH DESCRIPTION
+Sans argument,
+.B webbrowser
+transforme le terminal en application plein écran avec quatre onglets :
+Recherche (F1), Navigateur (F2), Historique (F3) et Paramètres (F4).
+Ctrl\-C quitte et restaure le terminal.
+.PP
+Les pages sont explorées par un crawler poli (robots.txt, délai par site), puis indexées
+dans une base SQLite FTS5 locale. Les adresses
+.I .onion
+passent automatiquement par Tor (proxy SOCKS5 sur 127.0.0.1:9050 par défaut).
+.SH RECHERCHE
+.TP
+.B mots clés
+tous les mots doivent apparaître (le dernier est cherché en préfixe)
+.TP
+.B """une phrase"""
+expression exacte
+.TP
+.B \-mot
+exclure un mot
+.TP
+.B site:exemple.fr
+limiter à un site
+.SH OPTIONS DE CRAWL
+.TP
+.BR \-n ", " \-\-max\-pages " N"
+nombre maximal de pages à indexer
+.TP
+.BR \-d ", " \-\-max\-depth " N"
+profondeur maximale depuis les URL de départ
+.TP
+.BR \-c ", " \-\-concurrency " N"
+requêtes simultanées (une seule à la fois par site)
+.TP
+.BI \-\-delay " MS"
+délai minimal entre deux requêtes vers un même site
+.TP
+.B \-\-onion
+forcer le passage par Tor
+.TP
+.B \-\-any\-domain
+suivre les liens vers d'autres sites
+.TP
+.B \-\-ignore\-robots
+ne pas lire robots.txt
+.TP
+.B \-\-allow\-private
+autoriser localhost et le réseau local
+.TP
+.B \-\-recrawl
+retélécharger les pages déjà indexées
+.SH FICHIERS
+.TP
+.I ~/.local/share/webbrowser/
+index, téléchargements
+.TP
+.I ~/.config/webbrowser/settings.json
+réglages modifiés depuis l'onglet Paramètres
+.TP
+.I ~/.cache/webbrowser/
+cache HTTP
+.TP
+.I /etc/webbrowser/config.json
+réglages par défaut pour tous les utilisateurs
+.TP
+.I /etc/webbrowser/onion-blocklist.txt
+services onion à ne jamais contacter (adresses ou empreintes MD5, format Ahmia)
+.SH ENVIRONNEMENT
+.TP
+.B WEBBROWSER_HOME
+regrouper toutes les données dans ce dossier
+.TP
+.BR WEBBROWSER_TOR_HOST ", " WEBBROWSER_TOR_PORT
+adresse du proxy SOCKS de Tor (9150 pour Tor Browser)
+.TP
+.B WEBBROWSER_PROXY
+proxy pour le web classique (socks5://… ou http://…)
+.TP
+.B NO_COLOR
+désactiver les couleurs
+.SH VOIR AUSSI
+.BR tor (1)

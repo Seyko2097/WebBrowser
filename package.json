@@ -1,0 +1,34 @@
+{
+  "name": "webbrowser",
+  "version": "0.2.0",
+  "description": "Moteur de recherche, crawler (web et onion) et navigateur pour le terminal",
+  "type": "module",
+  "main": "Src/Backend/App.js",
+  "bin": {
+    "webbrowser": "Src/main.js"
+  },
+  "scripts": {
+    "start": "node Src/main.js",
+    "serve": "node Src/main.js serve",
+    "crawl": "node Src/main.js crawl",
+    "test": "node --test \"Tests/**/*.test.js\"",
+    "lint": "eslint Src Tests",
+    "package": "sh Packaging/build.sh"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "os": [
+    "linux"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seyko2097/webbrowser"
+  },
+  "files": [
+    "Src",
+    "Config",
+    "README.md"
+  ]
+}

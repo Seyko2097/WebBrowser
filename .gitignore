@@ -1,5 +1,12 @@
 __pycache__/
-*.pyc
+node_modules/
+dist/
+Data/**
+!Data/*/
+!Data/**/.gitkeep
+Logs/*
+!Logs/.gitkeep
 *.db
 *.db-wal
 *.db-shm
+*.tmp

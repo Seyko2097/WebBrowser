@@ -1,0 +1,13 @@
+# Service utilisateur systemd pour l'API REST de WebBrowser.
+# Activation : systemctl --user enable --now webbrowser-api
+[Unit]
+Description=API REST de WebBrowser (moteur de recherche)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/webbrowser serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
