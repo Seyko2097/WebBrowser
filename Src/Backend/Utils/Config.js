@@ -13,6 +13,15 @@ const ENV_OVERRIDES = {
   WEBBROWSER_API_HOST: ['api.host', String],
   WEBBROWSER_API_PORT: ['api.port', Number],
   LOG_LEVEL: ['log.level', String],
+  WEBBROWSER_ADMIN_TOKEN: ['server.adminToken', String],
+  WEBBROWSER_SERVER_HOST: ['server.host', String],
+  WEBBROWSER_SERVER_PORT: ['server.port', Number],
+  WEBBROWSER_CONTACT: ['server.contact', String],
+  WEBBROWSER_TRUST_PROXY: ['server.trustProxy', (v) => v === '1' || v === 'true'],
+  WEBBROWSER_CONCURRENCY: ['server.concurrency', Number],
+  WEBBROWSER_DB_CACHE_MB: ['server.dbCacheMB', Number],
+  WEBBROWSER_MAX_DB_MB: ['server.maxDbSizeMB', Number],
+  WEBBROWSER_MAX_PAGES: ['server.maxPages', Number],
 };
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);

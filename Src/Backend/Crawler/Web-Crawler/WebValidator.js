@@ -42,6 +42,7 @@ export class WebValidator {
       } catch {
         addresses = [];
       }
+      if (this.dnsCache.size >= 20000) this.dnsCache.clear();
       this.dnsCache.set(host, addresses);
     }
     if (addresses.some(isPrivateIp)) return { ok: false, reason: 'le nom résout vers une adresse privée' };

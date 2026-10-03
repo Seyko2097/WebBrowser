@@ -49,7 +49,7 @@ export class SearchIndex {
   /**
    * @returns {{results: Array<{url, title, snippet, description, network, fetchedAt, score}>, total: number}}
    */
-  search(query, { limit = 20, offset = 0, network = null } = {}) {
+  search(query, { limit = 20, offset = 0, network = null, countLimit = 10000 } = {}) {
     const { match, site } = buildFtsQuery(query);
     if (!match) return { results: [], total: 0 };
     const where = ['pages_fts MATCH ?'];
@@ -64,7 +64,8 @@ export class SearchIndex {
     }
     const from = `FROM pages_fts JOIN pages p ON p.id = pages_fts.rowid WHERE ${where.join(' AND ')}`;
     try {
-      const { n: total } = this.db.get(`SELECT COUNT(*) AS n ${from}`, ...params);
+      // Comptage plafonné : compter des millions de correspondances coûterait trop cher
+      const { n: total } = this.db.get(`SELECT COUNT(*) AS n FROM (SELECT 1 ${from} LIMIT ?)`, ...params, countLimit);
       const rows = this.db.all(
         `SELECT p.url, p.title, p.description, p.network, p.fetched_at AS fetchedAt,
                 snippet(pages_fts, 3, '${HL_START}', '${HL_END}', ' … ', 28) AS snippet,
@@ -81,7 +82,7 @@ export class SearchIndex {
           network: r.network, fetchedAt: r.fetchedAt, score: -r.rank,
         };
       });
-      return { results, total };
+      return { results, total, totalCapped: total >= countLimit };
     } catch (err) {
       if (/fts5|syntax/i.test(err.message)) return { results: [], total: 0 };
       throw err;

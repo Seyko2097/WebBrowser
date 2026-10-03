@@ -28,6 +28,12 @@ Usage :
   webbrowser tor                    vérifie que Tor est joignable
   webbrowser paths                  emplacement des données et de la configuration
 
+Mode serveur (VPS) :
+  webbrowser server                 exploration continue + recherche publique (http://IP:8080)
+  webbrowser seeds                  liste des sites de départ et état du robot
+  webbrowser seeds add <url…>       ajoute des sites de départ (-d profondeur, -n pages max, --any-domain)
+  webbrowser seeds remove <id>      retire un site de départ (--purge : oublie aussi ses pages explorées)
+
 Options de crawl :
   -n, --max-pages N   pages maximum             -d, --max-depth N   profondeur maximum
   -c, --concurrency N requêtes simultanées      --delay MS          délai entre requêtes vers un même site
@@ -37,6 +43,7 @@ Options de crawl :
 
 Options de search :  -n, --limit N   --network web|onion   --json
 Options de serve :   --host HÔTE   --port PORT
+Options de server :  --host HÔTE   --port PORT   --no-crawl (recherche seule)   --purge
 Options générales :  --home DOSSIER (données dans ce dossier)   -v, --verbose   -h, --help   --version
 
 Raccourcis de l'interface : F1 Recherche · F2 Navigateur · F3 Historique · F4 Paramètres · Ctrl-C Quitter`;
@@ -58,11 +65,13 @@ const OPTIONS = {
   port: { type: 'string' },
   home: { type: 'string' },
   verbose: { type: 'boolean', short: 'v' },
+  'no-crawl': { type: 'boolean' },
+  purge: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean' },
 };
 
-const COMMANDS = new Set(['tui', 'crawl', 'search', 'open', 'serve', 'stats', 'tor', 'paths', 'help']);
+const COMMANDS = new Set(['tui', 'crawl', 'search', 'open', 'serve', 'stats', 'tor', 'paths', 'help', 'server', 'seeds']);
 
 function int(value, name) {
   if (value === undefined) return undefined;
@@ -212,6 +221,99 @@ function cmdPaths(app) {
   return 0;
 }
 
+// ------------------------------------------------------------------------------- mode serveur
+
+function serverConfig(values) {
+  if (values.home) process.env.WEBBROWSER_HOME = path.resolve(values.home);
+  return new Config();
+}
+
+async function cmdServer(values) {
+  const { ServerApp } = await import('./Backend/Server/ServerApp.js');
+  const config = serverConfig(values);
+  // Sous systemd (INVOCATION_ID défini), journald conserve et fait tourner les journaux : pas de fichier
+  const logFile = process.env.INVOCATION_ID ? null : config.path('log.file');
+  const logger = new Logger({ level: values.verbose ? 'debug' : config.get('log.level'), file: logFile, console: true });
+  const app = new ServerApp({ config, logger, version: VERSION, crawl: !values['no-crawl'] });
+  const server = app.createPublicServer({
+    ...(values.host ? { host: values.host } : {}),
+    ...(values.port ? { port: int(values.port, 'port') } : {}),
+  });
+  const { host, port } = await server.start();
+  if (app.daemon) {
+    app.daemon.on('page', ({ url, firstIndex }) => logger.debug(`${firstIndex ? 'nouvelle' : 'mise à jour'} ${url}`));
+    await app.daemon.start();
+  }
+  const seeds = app.seeds.list().length;
+  logger.info(`WebBrowser ${VERSION} — recherche sur http://${host}:${port} — ${app.searchIndex.count()} pages, ${seeds} site(s) de départ`);
+  if (!seeds && app.daemon) logger.warn('aucun site de départ : ajoutez-en avec « webbrowser seeds add https://… »');
+  if (!config.get('server.adminToken')) logger.warn('WEBBROWSER_ADMIN_TOKEN non défini : API d’administration désactivée');
+  const statusTimer = setInterval(() => {
+    if (!app.daemon) return;
+    const s = app.daemon.status();
+    logger.info(`robot : ${s.pagesPerMinute} pages/min, ${s.stats.newPages} nouvelles, ${s.stats.errors} erreurs, ${s.active} en cours${s.capacity.reason ? ` — ${s.capacity.reason}` : ''}`);
+  }, 5 * 60_000);
+  statusTimer.unref();
+  await new Promise((resolve) => {
+    process.once('SIGINT', resolve);
+    process.once('SIGTERM', resolve);
+  });
+  logger.info('arrêt en cours…');
+  clearInterval(statusTimer);
+  await server.stop();
+  await app.close();
+  logger.close();
+  return 0;
+}
+
+async function cmdSeeds(args, values) {
+  const { ServerApp } = await import('./Backend/Server/ServerApp.js');
+  const config = serverConfig(values);
+  const app = new ServerApp({ config, logger: Logger.silent(), version: VERSION, crawl: false, dbOptions: { cacheMB: 0 } });
+  const [action = 'list', ...rest] = args;
+  try {
+    if (action === 'add') {
+      if (!rest.length) throw new Error('indiquez au moins une URL');
+      for (const u of rest) {
+        const seed = app.seeds.add(withScheme(u), {
+          maxDepth: int(values['max-depth'], 'max-depth') ?? 3,
+          maxPages: int(values['max-pages'], 'max-pages') ?? 10000,
+          sameDomain: !values['any-domain'],
+        });
+        console.log(`${seed.created ? green('+ ajouté') : '~ mis à jour'} #${seed.id} ${seed.url}  ${dim(`profondeur ${seed.maxDepth}, ${seed.maxPages} pages max${seed.sameDomain ? '' : ', tous domaines'}`)}`);
+      }
+      console.log(dim('Le robot les prendra en compte dans les 30 secondes.'));
+      return 0;
+    }
+    if (action === 'remove' || action === 'rm') {
+      const result = app.seeds.remove(Number(rest[0]), { purge: values.purge });
+      if (!result) throw new Error(`site de départ #${rest[0]} inconnu`);
+      console.log(`Retiré : ${result.seed.url} (${result.removedUrls} URL retirées de la file)`);
+      return 0;
+    }
+    if (action === 'enable' || action === 'disable') {
+      if (!app.seeds.setEnabled(Number(rest[0]), action === 'enable')) throw new Error(`site de départ #${rest[0]} inconnu`);
+      console.log(action === 'enable' ? 'Réactivé.' : 'Mis en pause.');
+      return 0;
+    }
+    if (action !== 'list') throw new Error(`action inconnue : ${action} (list, add, remove, enable, disable)`);
+    const list = app.seeds.list();
+    const f = app.frontier.counts();
+    const s = app.searchIndex.stats();
+    console.log(`${bold(s.total)} pages indexées sur ${s.hosts} sites · file : ${f.pending} à découvrir, ${f.ignored} ignorées (robots.txt, noindex…), ${f.retrying} en erreur (réessai prévu), ${f.dead} abandonnées
+`);
+    if (!list.length) console.log('Aucun site de départ. Exemple : webbrowser seeds add https://fr.wikipedia.org -n 50000');
+    for (const seed of list) {
+      const state = seed.enabled ? '' : dim(' (en pause)');
+      console.log(`#${String(seed.id).padEnd(4)} ${seed.url}${state}
+      ${seed.indexed}/${seed.maxPages} pages · profondeur ${seed.maxDepth}${seed.sameDomain ? '' : ' · tous domaines'}`);
+    }
+    return 0;
+  } finally {
+    await app.close();
+  }
+}
+
 export async function main(argv = process.argv.slice(2)) {
   let parsed;
   try {
@@ -234,6 +336,14 @@ export async function main(argv = process.argv.slice(2)) {
     rest = positionals;
     command = 'tui';
   }
+  if (command === 'server') return cmdServer(values).catch((err) => {
+    console.error(`Erreur : ${err.message}`);
+    return 1;
+  });
+  if (command === 'seeds') return cmdSeeds(rest, values).catch((err) => {
+    console.error(`Erreur : ${err.message}`);
+    return 1;
+  });
   const app = makeApp(values, { console: command !== 'tui' });
   try {
     switch (command) {

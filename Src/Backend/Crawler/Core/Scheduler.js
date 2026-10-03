@@ -75,6 +75,18 @@ export class Scheduler {
     this.inFlight = Math.max(0, this.inFlight - 1);
   }
 
+  /** Oublie les hôtes sans tâche en attente ni en cours (exploration de longue durée). */
+  prune(now = Date.now()) {
+    const kept = [];
+    for (const host of this.order) {
+      const state = this.hosts.get(host);
+      if (state.queue.isEmpty() && state.active === 0 && state.nextAt <= now) this.hosts.delete(host);
+      else kept.push(host);
+    }
+    this.order = kept;
+    this.cursor = 0;
+  }
+
   clear() {
     for (const state of this.hosts.values()) state.queue.clear();
     this.pending = 0;

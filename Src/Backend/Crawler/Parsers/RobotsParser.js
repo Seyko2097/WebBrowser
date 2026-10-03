@@ -129,7 +129,8 @@ export function parseRobots(text) {
 
 /** Cache des robots.txt par origine, téléchargés via une fonction fetcher(url) → { status, text }. */
 export class RobotsCache {
-  constructor({ fetcher, userAgent = '*', ttlMs = 24 * 3600_000 } = {}) {
+  constructor({ fetcher, userAgent = '*', ttlMs = 24 * 3600_000, maxEntries = 50000 } = {}) {
+    this.maxEntries = maxEntries;
     this.fetcher = fetcher;
     this.userAgent = userAgent;
     this.ttlMs = ttlMs;
@@ -144,6 +145,8 @@ export class RobotsCache {
       this.entries.set(origin, { rules, expires: Date.now() + this.ttlMs });
       return rules;
     });
+    // Limite mémoire : on oublie les origines les plus anciennes
+    while (this.entries.size >= this.maxEntries) this.entries.delete(this.entries.keys().next().value);
     this.entries.set(origin, { pending, expires: Infinity });
     return pending;
   }

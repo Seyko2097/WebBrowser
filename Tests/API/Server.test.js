@@ -89,6 +89,9 @@ test('page via le navigateur, protection contre les adresses locales', async () 
 });
 
 test('JSON invalide', async () => {
-  const res = await fetch(`${base}/api/crawl`, { method: 'POST', body: '{oups' });
+  const res = await fetch(`${base}/api/crawl`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{oups' });
   assert.equal(res.status, 400);
+  // Formulaire « text/plain » (CSRF depuis un site web) : refusé
+  const csrf = await fetch(`${base}/api/crawl`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: '{"urls":["http://x.test/"]}' });
+  assert.equal(csrf.status, 415);
 });

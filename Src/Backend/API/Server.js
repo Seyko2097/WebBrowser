@@ -11,6 +11,10 @@ import { ApiError } from './Controllers/HttpErrors.js';
 const MAX_BODY = 1024 * 1024;
 
 function readBody(req) {
+  // JSON obligatoire : un formulaire envoyé par un site web (CSRF vers 127.0.0.1) est refusé
+  if (!/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
+    return Promise.reject(new ApiError(415, 'Content-Type: application/json attendu'));
+  }
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;

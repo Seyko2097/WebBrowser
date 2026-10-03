@@ -1,6 +1,6 @@
 {
   "name": "webbrowser",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Moteur de recherche, crawler (web et onion) et navigateur pour le terminal",
   "type": "module",
   "main": "Src/Backend/App.js",

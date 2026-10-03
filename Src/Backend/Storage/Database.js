@@ -21,7 +21,7 @@ function loadSqlite() {
 
 const { DatabaseSync } = loadSqlite();
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS pages (
@@ -67,6 +67,41 @@ CREATE TABLE IF NOT EXISTS links (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS links_to ON links(to_url);
 
+-- Mode serveur : sites de départ, file d'exploration persistante, hôtes à visiter
+CREATE TABLE IF NOT EXISTS seeds (
+  id INTEGER PRIMARY KEY,
+  url TEXT UNIQUE NOT NULL,
+  host TEXT NOT NULL,
+  max_depth INTEGER NOT NULL DEFAULT 3,
+  max_pages INTEGER NOT NULL DEFAULT 10000,
+  same_domain INTEGER NOT NULL DEFAULT 1,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  indexed INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS frontier (
+  url TEXT PRIMARY KEY,
+  host TEXT NOT NULL,
+  seed_id INTEGER,
+  depth INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'dead')),
+  next_at INTEGER NOT NULL,
+  lease_until INTEGER,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  indexed_at INTEGER,
+  last_status TEXT,
+  added_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS frontier_host ON frontier(host, status, next_at);
+CREATE INDEX IF NOT EXISTS frontier_seed ON frontier(seed_id);
+
+CREATE TABLE IF NOT EXISTS crawl_hosts (
+  host TEXT PRIMARY KEY,
+  due_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS crawl_hosts_due ON crawl_hosts(due_at);
+
 CREATE TABLE IF NOT EXISTS history (
   id INTEGER PRIMARY KEY,
   kind TEXT NOT NULL CHECK (kind IN ('visit', 'search')),
@@ -78,7 +113,7 @@ CREATE INDEX IF NOT EXISTS history_created ON history(created_at);
 `;
 
 export class Database {
-  constructor(file = ':memory:') {
+  constructor(file = ':memory:', { cacheMB = 0 } = {}) {
     this.file = file;
     if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
     this.db = new DatabaseSync(file);
@@ -88,6 +123,10 @@ export class Database {
       this.db.exec('PRAGMA journal_mode = WAL');
       this.db.exec('PRAGMA synchronous = NORMAL');
       this.db.exec('PRAGMA busy_timeout = 5000');
+    }
+    if (cacheMB > 0) {
+      this.db.exec(`PRAGMA cache_size = -${Math.round(cacheMB * 1024)}`);
+      this.db.exec(`PRAGMA mmap_size = ${Math.round(cacheMB * 4) * 1024 * 1024}`);
     }
     this.migrate();
   }

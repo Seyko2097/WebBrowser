@@ -69,6 +69,26 @@ export default {
     theme: 'system',
   },
 
+  // Mode serveur (VPS) : exploration continue + recherche publique — « webbrowser server »
+  server: {
+    host: '0.0.0.0',
+    port: 8080,
+    adminToken: null, // clé d'administration (WEBBROWSER_ADMIN_TOKEN)
+    adminRemote: false, // false : administration réservée aux connexions locales (SSH)
+    trustProxy: false, // true derrière un proxy inverse (Caddy, nginx) pour lire X-Forwarded-For
+    botName: 'WebBrowserBot',
+    contact: '', // URL ou e-mail ajouté au User-Agent du robot (recommandé pour un crawler public)
+    concurrency: 16,
+    hostDelayMs: 1000,
+    recrawlAfterDays: 7,
+    maxLinksPerPage: 300,
+    maxPages: 5_000_000,
+    maxFrontier: 50_000_000,
+    maxDbSizeMB: 100_000,
+    dbCacheMB: 512,
+    searchPerMinute: 120,
+  },
+
   api: {
     host: '127.0.0.1',
     port: 8080,
