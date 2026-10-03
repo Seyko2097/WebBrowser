@@ -1,32 +1,11 @@
 // Paramètres : modification des réglages (enregistrés dans settings.json) et actions de maintenance.
 import { S, LineInput, clip } from '../Terminal.js';
 import { formatBytes } from '../../Backend/Storage/Files.js';
+import { settingsFor, coerceSetting } from '../../Backend/Utils/SettingsSchema.js';
 import fs from 'node:fs';
 
 const FIELDS = [
-  { section: 'Exploration du web' },
-  { key: 'crawler.maxPages', label: 'Pages max par exploration', type: 'int', min: 1, max: 100000 },
-  { key: 'crawler.maxDepth', label: 'Profondeur max', type: 'int', min: 0, max: 50 },
-  { key: 'crawler.concurrency', label: 'Requêtes simultanées', type: 'int', min: 1, max: 32 },
-  { key: 'crawler.delayMs', label: 'Délai entre requêtes (ms)', type: 'int', min: 0, max: 60000 },
-  { key: 'crawler.sameDomain', label: 'Rester sur le même site', type: 'bool' },
-  { key: 'crawler.respectRobots', label: 'Respecter robots.txt', type: 'bool' },
-  { key: 'crawler.allowPrivateHosts', label: 'Autoriser les adresses locales', type: 'bool' },
-  { section: 'Exploration onion (Tor)' },
-  { key: 'onion.maxPages', label: 'Pages max par exploration', type: 'int', min: 1, max: 100000 },
-  { key: 'onion.maxDepth', label: 'Profondeur max', type: 'int', min: 0, max: 50 },
-  { key: 'onion.delayMs', label: 'Délai entre requêtes (ms)', type: 'int', min: 0, max: 60000 },
-  { key: 'onion.sameDomain', label: 'Rester sur le même service', type: 'bool' },
-  { key: 'tor.host', label: 'Hôte du proxy Tor', type: 'string', restart: true },
-  { key: 'tor.port', label: 'Port SOCKS de Tor', type: 'int', min: 1, max: 65535, restart: true },
-  { section: 'Navigateur' },
-  { key: 'browser.indexVisited', label: 'Indexer les pages visitées', type: 'bool' },
-  { key: 'browser.recordHistory', label: 'Enregistrer l’historique', type: 'bool' },
-  { key: 'browser.engine', label: 'Moteur de rendu', type: 'enum', options: ['http', 'playwright'], restart: true },
-  { key: 'network.timeoutMs', label: 'Délai réseau (ms)', type: 'int', min: 1000, max: 300000, restart: true },
-  { key: 'network.proxy', label: 'Proxy web (socks5://… ou http://…)', type: 'string', nullable: true, restart: true },
-  { section: 'API' },
-  { key: 'api.port', label: 'Port de l’API (webbrowser serve)', type: 'int', min: 1, max: 65535 },
+  ...settingsFor('tui'),
   { section: 'Maintenance' },
   { action: 'tor', label: 'Tester la connexion à Tor' },
   { action: 'cache', label: 'Vider le cache' },
@@ -117,17 +96,11 @@ export class SettingsView {
 
   commitEdit() {
     const { field: f, input } = this.editing;
-    const raw = input.value.trim();
     this.editing = null;
-    if (f.type === 'int') {
-      const n = Number(raw);
-      if (!Number.isInteger(n) || n < f.min || n > f.max) {
-        this.app.flash(`Valeur invalide : entier entre ${f.min} et ${f.max}.`, 'err');
-        return;
-      }
-      this.save(f, n);
-    } else {
-      this.save(f, raw === '' && f.nullable ? null : raw);
+    try {
+      this.save(f, coerceSetting(f, input.value));
+    } catch (err) {
+      this.app.flash(err.message, 'err');
     }
   }
 

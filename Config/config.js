@@ -63,6 +63,12 @@ export default {
     recordHistory: true,
   },
 
+  desktop: {
+    searchEngine: 'webbrowser',
+    restoreTabs: true,
+    theme: 'system',
+  },
+
   api: {
     host: '127.0.0.1',
     port: 8080,

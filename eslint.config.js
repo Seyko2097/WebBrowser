@@ -2,7 +2,7 @@
 const nodeGlobals = Object.fromEntries([
   'process', 'console', 'Buffer', 'URL', 'URLSearchParams', 'TextDecoder', 'TextEncoder', 'setTimeout', 'clearTimeout',
   'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'structuredClone', 'fetch', 'AbortController',
-  'queueMicrotask',
+  'queueMicrotask', 'Response', 'Request', 'Headers',
 ].map((g) => [g, 'readonly']));
 
 export default [
